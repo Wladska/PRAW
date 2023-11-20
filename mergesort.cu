@@ -36,17 +36,13 @@ int main(int argc, char *argv[]) {
     int generatedInputHead = HEAD_PRINT_INPUT_DATA;
     int initialArraySize = INITIAL_ARRAY_SIZE;
 
-    try {
-        initialArraySize = std::atoi(argv[1]);
-        if (argc > 2) {
-            generatedInputHead = std::atoi(argv[2]);
-        }
-    } catch {
-        std::cerr << "ArgumentS were not a valid integer" << std::endl;
-        return 1;
+
+    initialArraySize = std::atoi(argv[1]);
+    if (argc > 2) {
+        generatedInputHead = std::atoi(argv[2]);
     }
 
-    td::vector<int> randomNumbers = generateRandomInput(initialArraySize);
+    std::vector<int> randomNumbers = generateRandomInput(initialArraySize);
 
     // Print the sorted array
     for (int i = 0; i < generatedInputHead; i++) {
