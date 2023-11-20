@@ -13,12 +13,13 @@
 
 std::vector<int> generateRandomInput(int size) {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
+    std::default_random_engine generator(std::rand());
     std::uniform_int_distribution<int> distribution(MIN_DISTRIBUTION, MAX_DISTRIBUTION);
 
     std::vector<int> randomNumbers;
     randomNumbers.reserve(size);
 
-    for (int i = 0; i < numElements; ++i) {
+    for (int i = 0; i < size; ++i) {
         int randomNum = distribution(generator);
         randomNumbers.push_back(randomNum);
     }
@@ -48,7 +49,7 @@ int main(int argc, char *argv[]) {
     td::vector<int> randomNumbers = generateRandomInput(initialArraySize);
 
     // Print the sorted array
-    for (int i = 0; i<generatedInputHead; i++) {
+    for (int i = 0; i < generatedInputHead; i++) {
         std::cout << randomNumbers[i] << " ";
     }
     std::cout << std::endl;
