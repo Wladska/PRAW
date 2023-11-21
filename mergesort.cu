@@ -4,7 +4,7 @@
 #include <ctime>
 #include <random>
 
-#define VARSION 1.0
+#define VARSION 1.1
 
 #define MIN_DISTRIBUTION -10000
 #define MAX_DISTRIBUTION 10000
@@ -28,7 +28,7 @@ __device__ void merge(int startIdx, int endIdx, int* inputData, int* outputData)
     int secondHalfIdxCursor = middleIdx;
 
     for (unsigned int ptr = startIdx; ptr < endIdx; ptr++) {
-        if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || inputData[firstHalfIdxCursor] < inputData[secondHalfIdxCursor])) {
+        if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || inputData[firstHalfIdxCursor] <= inputData[secondHalfIdxCursor])) {
             outputData[ptr] = inputData[firstHalfIdxCursor];
             firstHalfIdxCursor++;
         } else {
@@ -47,13 +47,13 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size) {
 
     __syncthreads();
 
-    /*for (unsigned int offset = 1; offset < size; offset *= 2) {
+    for (unsigned int offset = 1; offset < size; offset *= 2) {
         if (localThreadId % (2 * offset) == 0) {
             merge(localThreadId, localThreadId + offset, sharedData, output);
             copy(output, sharedData, localThreadId, offset);
         }
         __syncthreads();
-    }*/
+    }
 
     // Copy the result back to the output array
     output[globalThreadId] = sharedData[localThreadId] + 1;
