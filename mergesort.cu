@@ -3,9 +3,8 @@
 #include <cstdlib>
 #include <ctime>
 #include <random>
-#include <cmath>
 
-#define VARSION 1.7
+#define VARSION 1.8
 
 #define MIN_DISTRIBUTION -10000
 #define MAX_DISTRIBUTION 10000
@@ -30,12 +29,12 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size) {
         if (localThreadId % (2 * offset) == 0) {
             //merge
             int endIdx = localThreadId + offset;
-            int middleIdx = std::ceil((localThreadId + endIdx) / 2);
+            int middleIdx = (localThreadId + endIdx) / 2 + 1;
 
             int firstHalfIdxCursor = localThreadId;
             int secondHalfIdxCursor = middleIdx;
 
-            for (unsigned int ptr = startIdx; ptr <= endIdx; ptr++) {
+            for (unsigned int ptr = localThreadId; ptr <= endIdx; ptr++) {
                 if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || sharedData[firstHalfIdxCursor] <= sharedData[secondHalfIdxCursor])) {
                     output[ptr] = sharedData[firstHalfIdxCursor];
                     firstHalfIdxCursor++;
@@ -75,19 +74,19 @@ void mergesort(int* input, int size){
     int *inputData, *outputData;
 
     // Allocate memory on GPU
-    cudaMalloc(&inputData, initialArraySize * sizeof(int));
-    cudaMalloc(&outputData, initialArraySize * sizeof(int));
+    cudaMalloc(&inputData, size * sizeof(int));
+    cudaMalloc(&outputData, size * sizeof(int));
 
     // Copy the input data to the device
-    cudaMemcpy(inputData, randomNumbers, initialArraySize * sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(inputData, input, size * sizeof(int), cudaMemcpyHostToDevice);
 
     dim3 blocksDim(1, 1, 1);
     dim3 threadBlockDim(THREADS_NUM, 1, 1);
 
-    mergeSortGPUBasic<<<blocksDim,threadBlockDim>>>(inputData, outputData, initialArraySize);
+    mergeSortGPUBasic<<<blocksDim,threadBlockDim>>>(inputData, outputData, size);
     cudaDeviceSynchronize(); // wait on CPU side for operations ordered to GPU
 
-    cudaMemcpy(input, outputData, initialArraySize * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(input, outputData, size * sizeof(int), cudaMemcpyDeviceToHost);
 
     // Free allocated memory on the device
     cudaFree(inputData);
