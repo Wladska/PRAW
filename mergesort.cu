@@ -89,7 +89,7 @@ int* generateRandomInput(int size) {
 }
 
 int main(int argc, char *argv[]) {
-    std::cout << "Usage: " << argv[0] << " <integer_argument> <generated_input_head_number>" << std::endl;
+    // std::cout << "Usage: " << argv[0] << " <array_size> <generated_input_head_number>" << std::endl;
 
     int generatedInputHead = HEAD_PRINT_INPUT_DATA;
     int initialArraySize = INITIAL_ARRAY_SIZE;
@@ -105,11 +105,11 @@ int main(int argc, char *argv[]) {
     }
 
     int* randomNumbers = generateRandomInput(initialArraySize);
-    int *inputData, *midMergeData;
+    int *inputData, *outputData;
 
     // Allocate memory on GPU
     cudaMalloc(&inputData, initialArraySize * sizeof(int));
-    cudaMalloc(&midMergeData, initialArraySize * sizeof(int));
+    cudaMalloc(&outputData, initialArraySize * sizeof(int));
 
     // Copy the input data to the device
     cudaMemcpy(inputData, randomNumbers, initialArraySize * sizeof(int), cudaMemcpyHostToDevice);
@@ -117,11 +117,11 @@ int main(int argc, char *argv[]) {
     dim3 blocksDim(1,1,1);
     dim3 threadBlockDim(THREADS_NUM,1,1);
 
-    mergeSortGPUBasic<<<blocksDim,threadBlockDim>>>(inputData, midMergeData, initialArraySize);
+    mergeSortGPUBasic<<<blocksDim,threadBlockDim>>>(inputData, outputData, initialArraySize);
     cudaDeviceSynchronize(); // wait on CPU side for operations ordered to GPU
 
     int result[initialArraySize];
-    cudaMemcpy(result, inputData, initialArraySize * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(result, outputData, initialArraySize * sizeof(int), cudaMemcpyDeviceToHost);
 
     // Print the input array
     for (int i = 0; i < generatedInputHead; i++) {
@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
 
     // Free allocated memory on the device
     cudaFree(inputData);
-    cudaFree(midMergeData);
+    cudaFree(outputData);
 
     return 0;
 }
