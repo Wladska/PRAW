@@ -56,7 +56,7 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size) {
     }
 
     // Copy the result back to the output array
-    output[globalThreadId] = sharedData[localThreadId] + 1;
+    output[globalThreadId] = sharedData[localThreadId];
 }
 
 int* generateRandomInput(int size) {
