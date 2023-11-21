@@ -46,7 +46,7 @@ __device__ void merge(int startIdx, int endIdx, int* inputData, int* outputData)
     int firstHalfIdxCursor = startIdx;
     int secondHalfIdxCursor = middleIdx;
 
-    for (unsigned int ptr = startIdx; ptr < endIdx, ptr ++) {
+    for (unsigned int ptr = startIdx; ptr < endIdx; ptr ++) {
         if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || inputData[firstHalfIdxCursor] < inputData[secondHalfIdxCursor]))
         {
             outputData[ptr] = inputData[firstHalfIdxCursor];
