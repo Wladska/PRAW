@@ -4,7 +4,7 @@
 #include <ctime>
 #include <random>
 
-#define VARSION 1.5
+#define VARSION 1.6
 
 #define MIN_DISTRIBUTION -10000
 #define MAX_DISTRIBUTION 10000
@@ -49,14 +49,33 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size) {
 
     for (unsigned int offset = 1; offset < size; offset *= 2) {
         if (localThreadId % (2 * offset) == 0) {
-            merge(localThreadId, localThreadId + offset, sharedData, output);
-            copy(output, sharedData, localThreadId, offset);
+            //merge(localThreadId, localThreadId + offset, sharedData, output);
+                int endIdx = localThreadId + offset;
+                int middleIdx = (localThreadId + endIdx) / 2 + 1;
+                int firstHalfIdxCursor = startIdx;
+                int secondHalfIdxCursor = middleIdx;
+
+                for (unsigned int ptr = startIdx; ptr < endIdx; ptr++) {
+                    if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || sharedData[firstHalfIdxCursor] <= sharedData[secondHalfIdxCursor])) {
+                        output[ptr] = sharedData[firstHalfIdxCursor];
+                        firstHalfIdxCursor++;
+                    } else {
+                        output[ptr] = sharedData[secondHalfIdxCursor];
+                        secondHalfIdxCursor++;
+                    }
+                }
+
+            //
+            //copy(output, sharedData, localThreadId, offset);
+                for (int i = 0; i < offset; i++) {
+                    sharedData[localThreadId + i] = output[localThreadId + i];
+                }
         }
         __syncthreads();
     }
 
     // Copy the result back to the output array
-    output[globalThreadId] = sharedData[localThreadId] + 1;
+    output[globalThreadId] = sharedData[localThreadId];
 }
 
 int* generateRandomInput(int size) {
