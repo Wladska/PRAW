@@ -4,7 +4,7 @@
 #include <ctime>
 #include <random>
 
-#define VARSION 1.4
+#define VARSION 1.5
 
 #define MIN_DISTRIBUTION -10000
 #define MAX_DISTRIBUTION 10000
@@ -27,8 +27,6 @@ __device__ void merge(int startIdx, int endIdx, int* inputData, int* outputData)
     int firstHalfIdxCursor = startIdx;
     int secondHalfIdxCursor = middleIdx;
 
-    std::cout << "middleIdx: " << middleIdx << " startIdx: " << startIdx << " endIdx: " << endIdx << std::endl;
-
     for (unsigned int ptr = startIdx; ptr < endIdx; ptr++) {
         if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || inputData[firstHalfIdxCursor] <= inputData[secondHalfIdxCursor])) {
             outputData[ptr] = inputData[firstHalfIdxCursor];
@@ -49,26 +47,12 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size) {
 
     __syncthreads();
 
-    if (globalThreadId == 0) {
-        for (int i = 0; i < size; i++) {
-            std::cout << sharedData[i] << ", ";
-        }
-        std::cout << std::endl;
-    }
-
     for (unsigned int offset = 1; offset < size; offset *= 2) {
         if (localThreadId % (2 * offset) == 0) {
             merge(localThreadId, localThreadId + offset, sharedData, output);
             copy(output, sharedData, localThreadId, offset);
         }
         __syncthreads();
-        if (globalThreadId == 0) {
-            std::cout << "offset: " << offset;
-            for (int i = 0; i < size; i++) {
-                std::cout << sharedData[i] << ", ";
-            }
-            std::cout << std::endl;
-        }
     }
 
     // Copy the result back to the output array
