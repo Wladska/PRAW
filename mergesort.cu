@@ -8,10 +8,9 @@
 #define MAX_DISTRIBUTION 10000
 
 #define INITIAL_ARRAY_SIZE 20
-#define HEAD_PRINT_INPUT_DATA INITIAL_ARRAY_SIZE
 #define THREADS_NUM INITIAL_ARRAY_SIZE
 
-__device__ unsigned int calcSelfGlobalIndex(){
+__device__ unsigned int calcSelfGlobalIndex() {
     return threadIdx.x + blockIdx.x * blockDim.x;
 }
 
@@ -26,32 +25,36 @@ __device__ void merge(int startIdx, int endIdx, int* inputData, int* outputData)
     int firstHalfIdxCursor = startIdx;
     int secondHalfIdxCursor = middleIdx;
 
-    for (unsigned int ptr = startIdx; ptr < endIdx; ptr ++) {
-        if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || inputData[firstHalfIdxCursor] < inputData[secondHalfIdxCursor]))
-        {
+    for (unsigned int ptr = startIdx; ptr < endIdx; ptr++) {
+        if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || inputData[firstHalfIdxCursor] < inputData[secondHalfIdxCursor])) {
             outputData[ptr] = inputData[firstHalfIdxCursor];
-            firstHalfIdxCursor ++;
+            firstHalfIdxCursor++;
         } else {
             outputData[ptr] = inputData[secondHalfIdxCursor];
-            secondHalfIdxCursor ++;
+            secondHalfIdxCursor++;
         }
     }
 }
 
-__global__ void mergeSortGPUBasic(int* input, int* midMerge, int size) {
-    extern __shared__ int sharedData []; // shared memory declaration
+__global__ void mergeSortGPUBasic(int* input, int* output, int size) {
+    extern __shared__ int sharedData[];  // shared memory declaration
     unsigned int localThreadId = threadIdx.x;
     unsigned int globalThreadId = calcSelfGlobalIndex();
+
     sharedData[localThreadId] = input[globalThreadId];
-    __syncthreads () ;
-    
-    for (unsigned int offset = 1; offset < blockDim.x; offset *= 2) {
-        if ( localThreadId % (2 * offset) == 0) {
-            merge(localThreadId, localThreadId + offset, sharedData, midMerge);
-            copy(midMerge, sharedData, localThreadId, offset);
+
+    __syncthreads();
+
+    for (unsigned int offset = 1; offset < size; offset *= 2) {
+        if (localThreadId % (2 * offset) == 0) {
+            merge(localThreadId, localThreadId + offset, sharedData, output);
+            copy(output, sharedData, localThreadId, offset);
         }
-        __syncthreads () ;
+        __syncthreads();
     }
+
+    // Copy the result back to the output array
+    output[globalThreadId] = sharedData[localThreadId];
 }
 
 int* generateRandomInput(int size) {
@@ -68,8 +71,8 @@ int* generateRandomInput(int size) {
     return randomNumbers;
 }
 
-int main(int argc, char *argv[]) {
-    int generatedInputHead = HEAD_PRINT_INPUT_DATA;
+int main() {
+    int generatedInputHead = INITIAL_ARRAY_SIZE;
     int initialArraySize = INITIAL_ARRAY_SIZE;
 
     int* randomNumbers = generateRandomInput(initialArraySize);
@@ -89,8 +92,8 @@ int main(int argc, char *argv[]) {
     // Copy the input data to the device
     cudaMemcpy(inputData, randomNumbers, initialArraySize * sizeof(int), cudaMemcpyHostToDevice);
 
-    dim3 blocksDim(1,1,1);
-    dim3 threadBlockDim(THREADS_NUM,1,1);
+    dim3 blocksDim(1, 1, 1);
+    dim3 threadBlockDim(THREADS_NUM, 1, 1);
 
     mergeSortGPUBasic<<<blocksDim,threadBlockDim>>>(inputData, outputData, initialArraySize);
     cudaDeviceSynchronize(); // wait on CPU side for operations ordered to GPU
