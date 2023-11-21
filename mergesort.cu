@@ -20,8 +20,8 @@ __device__ unsigned int calcSelfGlobalIndex(){
 }
 
 
-__device__ copy(int* source, int* destination, int startIndex, int numberOfElementsToCopy) {
-    for(int i = 0; i < numberOfElementsToCopy; i++) {
+__device__ void copy(int* source, int* destination, int startIndex, int numberOfElementsToCopy) {
+    for (int i = 0; i < numberOfElementsToCopy; i++) {
         destination[startIndex + i] = source[startIndex + i];
     }
 }
@@ -41,12 +41,12 @@ Threads: |    t1    |    t2    |    t3    |    t4    |
 
 */
 
-__device__ merge(int startIdx, int endIdx, int* inputData, int* outputData) {
+__device__ void merge(int startIdx, int endIdx, int* inputData, int* outputData) {
     int middleIdx = (startIdx + endIdx) / 2;
     int firstHalfIdxCursor = startIdx;
     int secondHalfIdxCursor = middleIdx;
 
-    for (unsigned int ptr = startIdx; ptr < startIdx + offset, ptr ++) {
+    for (unsigned int ptr = startIdx; ptr < endIdx, ptr ++) {
         if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || inputData[firstHalfIdxCursor] < inputData[secondHalfIdxCursor]))
         {
             outputData[ptr] = inputData[firstHalfIdxCursor];
@@ -68,7 +68,7 @@ __global__ void mergeSortGPUBasic(int* input, int* midMerge, int size) {
     for (unsigned int offset = 1; offset < blockDim.x; offset *= 2) {
         if ( localThreadId % (2* offset) == 0) {
             merge(localThreadId, localThreadId + offset, sharedData, midMerge);
-            copy(midMerge, sharedData, localThreadId, offset)
+            copy(midMerge, sharedData, localThreadId, offset);
         }
         __syncthreads () ;
     }
@@ -99,7 +99,7 @@ int main(int argc, char *argv[]) {
         if (argc > 2) {
             generatedInputHead = std::atoi(argv[2]);
             if (generatedInputHead > initialArraySize) {
-                generatedInputHead = initialArraySize
+                generatedInputHead = initialArraySize;
             }
         }
     }
@@ -117,11 +117,11 @@ int main(int argc, char *argv[]) {
     dim3 blocksDim(1,1,1);
     dim3 threadBlockDim(THREADS_NUM,1,1);
 
-    mergeSortGPUBasic<blocksDim,threadBlockDim>(inputData, midMergeData, initialArraySize);
+    mergeSortGPUBasic<<<blocksDim,threadBlockDim>>>(inputData, midMergeData, initialArraySize);
     cudaDeviceSynchronize(); // wait on CPU side for operations ordered to GPU
 
     int result[initialArraySize];
-    cudaMemcpy(result, d_input, size * sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy(result, inputData, initialArraySize * sizeof(int), cudaMemcpyDeviceToHost);
 
     // Print the input array
     for (int i = 0; i < generatedInputHead; i++) {
@@ -139,7 +139,7 @@ int main(int argc, char *argv[]) {
 
     // Free allocated memory on the device
     cudaFree(inputData);
-    cudaFree(outputData);
+    cudaFree(midMergeData);
 
     return 0;
 }
