@@ -4,7 +4,7 @@
 #include <ctime>
 #include <random>
 
-#define VARSION 1.9
+#define VARSION 2.0
 
 #define MIN_DISTRIBUTION -10000
 #define MAX_DISTRIBUTION 10000
@@ -28,7 +28,7 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size) {
     for (unsigned int offset = 1; offset < blockDim.x; offset *= 2) {
         if (localThreadId % (2 * offset) == 0) {
             //merge
-            int endIdx = (localThreadId + offset)*2;
+            int endIdx = localThreadId + offset*2;
             int middleIdx = localThreadId + offset;
 
             int firstHalfIdxCursor = localThreadId;
