@@ -4,6 +4,8 @@
 #include <ctime>
 #include <random>
 
+#define VARSION 1.0
+
 #define MIN_DISTRIBUTION -10000
 #define MAX_DISTRIBUTION 10000
 
@@ -45,16 +47,16 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size) {
 
     __syncthreads();
 
-    for (unsigned int offset = 1; offset < size; offset *= 2) {
+    /*for (unsigned int offset = 1; offset < size; offset *= 2) {
         if (localThreadId % (2 * offset) == 0) {
             merge(localThreadId, localThreadId + offset, sharedData, output);
             copy(output, sharedData, localThreadId, offset);
         }
         __syncthreads();
-    }
+    }*/
 
     // Copy the result back to the output array
-    output[globalThreadId] = sharedData[localThreadId];
+    output[globalThreadId] = sharedData[localThreadId] + 1;
 }
 
 int* generateRandomInput(int size) {
