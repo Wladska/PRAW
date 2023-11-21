@@ -3,39 +3,19 @@
 #include <cstdlib>
 #include <ctime>
 #include <random>
+#include <cmath>
 
-#define VARSION 1.6
+#define VARSION 1.7
 
 #define MIN_DISTRIBUTION -10000
 #define MAX_DISTRIBUTION 10000
 
 #define INITIAL_ARRAY_SIZE 16
+#define GENERATED_INPUT_HEAD 16
 #define THREADS_NUM INITIAL_ARRAY_SIZE
 
 __device__ unsigned int calcSelfGlobalIndex() {
     return threadIdx.x + blockIdx.x * blockDim.x;
-}
-
-__device__ void copy(int* source, int* destination, int startIndex, int numberOfElementsToCopy) {
-    for (int i = 0; i < numberOfElementsToCopy; i++) {
-        destination[startIndex + i] = source[startIndex + i];
-    }
-}
-
-__device__ void merge(int startIdx, int endIdx, int* inputData, int* outputData) {
-    int middleIdx = (startIdx + endIdx) / 2 + 1;
-    int firstHalfIdxCursor = startIdx;
-    int secondHalfIdxCursor = middleIdx;
-
-    for (unsigned int ptr = startIdx; ptr < endIdx; ptr++) {
-        if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || inputData[firstHalfIdxCursor] <= inputData[secondHalfIdxCursor])) {
-            outputData[ptr] = inputData[firstHalfIdxCursor];
-            firstHalfIdxCursor++;
-        } else {
-            outputData[ptr] = inputData[secondHalfIdxCursor];
-            secondHalfIdxCursor++;
-        }
-    }
 }
 
 __global__ void mergeSortGPUBasic(int* input, int* output, int size) {
@@ -44,32 +24,31 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size) {
     unsigned int globalThreadId = calcSelfGlobalIndex();
 
     sharedData[localThreadId] = input[globalThreadId];
-
     __syncthreads();
 
     for (unsigned int offset = 1; offset < size; offset *= 2) {
         if (localThreadId % (2 * offset) == 0) {
-            //merge(localThreadId, localThreadId + offset, sharedData, output);
-                int endIdx = localThreadId + offset;
-                int middleIdx = (localThreadId + endIdx) / 2 + 1;
-                int firstHalfIdxCursor = startIdx;
-                int secondHalfIdxCursor = middleIdx;
+            //merge
+            int endIdx = localThreadId + offset;
+            int middleIdx = std::ceil((localThreadId + endIdx) / 2);
 
-                for (unsigned int ptr = startIdx; ptr < endIdx; ptr++) {
-                    if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || sharedData[firstHalfIdxCursor] <= sharedData[secondHalfIdxCursor])) {
-                        output[ptr] = sharedData[firstHalfIdxCursor];
-                        firstHalfIdxCursor++;
-                    } else {
-                        output[ptr] = sharedData[secondHalfIdxCursor];
-                        secondHalfIdxCursor++;
-                    }
+            int firstHalfIdxCursor = localThreadId;
+            int secondHalfIdxCursor = middleIdx;
+
+            for (unsigned int ptr = startIdx; ptr <= endIdx; ptr++) {
+                if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || sharedData[firstHalfIdxCursor] <= sharedData[secondHalfIdxCursor])) {
+                    output[ptr] = sharedData[firstHalfIdxCursor];
+                    firstHalfIdxCursor++;
+                } else {
+                    output[ptr] = sharedData[secondHalfIdxCursor];
+                    secondHalfIdxCursor++;
                 }
+            }
 
-            //
             //copy(output, sharedData, localThreadId, offset);
-                for (int i = 0; i < offset; i++) {
-                    sharedData[localThreadId + i] = output[localThreadId + i];
-                }
+            for (int i = 0; i < offset; i++) {
+                sharedData[localThreadId + i] = output[localThreadId + i];
+            }
         }
         __syncthreads();
     }
@@ -92,18 +71,7 @@ int* generateRandomInput(int size) {
     return randomNumbers;
 }
 
-int main() {
-    int generatedInputHead = INITIAL_ARRAY_SIZE;
-    int initialArraySize = INITIAL_ARRAY_SIZE;
-
-    int* randomNumbers = generateRandomInput(initialArraySize);
-
-    // Print the input array
-    for (int i = 0; i < generatedInputHead; i++) {
-        std::cout << randomNumbers[i] << " ";
-    }
-    std::cout << std::endl;
-
+void mergesort(int* input, int size){
     int *inputData, *outputData;
 
     // Allocate memory on GPU
@@ -119,20 +87,35 @@ int main() {
     mergeSortGPUBasic<<<blocksDim,threadBlockDim>>>(inputData, outputData, initialArraySize);
     cudaDeviceSynchronize(); // wait on CPU side for operations ordered to GPU
 
-    int result[initialArraySize];
-    cudaMemcpy(result, outputData, initialArraySize * sizeof(int), cudaMemcpyDeviceToHost);
-
-    // Print the sorted array
-    for (int i = 0; i < initialArraySize; i++) {
-        std::cout << result[i] << " ";
-    }
-    std::cout << std::endl;
-
-    delete[] randomNumbers;
+    cudaMemcpy(input, outputData, initialArraySize * sizeof(int), cudaMemcpyDeviceToHost);
 
     // Free allocated memory on the device
     cudaFree(inputData);
     cudaFree(outputData);
+
+}
+
+int main() {
+    int generatedInputHead = GENERATED_INPUT_HEAD;
+    int initialArraySize = INITIAL_ARRAY_SIZE;
+
+    int* randomNumbers = generateRandomInput(initialArraySize);
+
+    // Print the input array
+    for (int i = 0; i < generatedInputHead; i++) {
+        std::cout << randomNumbers[i] << " ";
+    }
+    std::cout << std::endl;
+
+    mergesort(randomNumbers, initialArraySize);
+   
+    // Print the input array
+    for (int i = 0; i < initialArraySize; i++) {
+        std::cout << randomNumbers[i] << " ";
+    }
+    std::cout << std::endl;
+
+    delete[] randomNumbers;
 
     return 0;
 }
