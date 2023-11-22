@@ -4,7 +4,8 @@
 #include <ctime>
 #include <random>
 
-#define VARSION 2.1
+#define VERSION 2.2
+#define LAST_WORKING_VERSION 2.1
 
 #define MIN_DISTRIBUTION -10000
 #define MAX_DISTRIBUTION 10000
@@ -17,6 +18,25 @@ __device__ unsigned int calcSelfGlobalIndex() {
     return threadIdx.x + blockIdx.x * blockDim.x;
 }
 
+__device__ void merge(int globalThreadId, int offset, int* sharedData, int* output){
+    int endIdx = globalThreadId + offset*2;
+    int middleIdx = globalThreadId + offset;
+
+    int firstHalfIdxCursor = globalThreadId;
+    int secondHalfIdxCursor = middleIdx;
+
+    for (unsigned int ptr = globalThreadId; ptr < endIdx; ptr++) {
+        if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || sharedData[firstHalfIdxCursor] <= sharedData[secondHalfIdxCursor])) {
+            output[ptr] = sharedData[firstHalfIdxCursor];
+            firstHalfIdxCursor++;
+        } else {
+            output[ptr] = sharedData[secondHalfIdxCursor];
+            secondHalfIdxCursor++;
+        }
+    }
+}
+
+
 __global__ void mergeSortGPUBasic(int* input, int* output, int size) {
     extern __shared__ int sharedData[];  // shared memory declaration
     unsigned int localThreadId = threadIdx.x;
@@ -27,22 +47,7 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size) {
 
     for (unsigned int offset = 1; offset < blockDim.x; offset *= 2) {
         if (localThreadId % (2 * offset) == 0) {
-            //merge
-            int endIdx = globalThreadId + offset*2;
-            int middleIdx = globalThreadId + offset;
-
-            int firstHalfIdxCursor = globalThreadId;
-            int secondHalfIdxCursor = middleIdx;
-
-            for (unsigned int ptr = globalThreadId; ptr < endIdx; ptr++) {
-                if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || sharedData[firstHalfIdxCursor] <= sharedData[secondHalfIdxCursor])) {
-                    output[ptr] = sharedData[firstHalfIdxCursor];
-                    firstHalfIdxCursor++;
-                } else {
-                    output[ptr] = sharedData[secondHalfIdxCursor];
-                    secondHalfIdxCursor++;
-                }
-            }
+            merge(globalThreadId, offset, sharedData, output);
         }
         __syncthreads();
         sharedData[localThreadId] = output[globalThreadId];
