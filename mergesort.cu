@@ -3,29 +3,27 @@
 #include <cstdlib>
 #include <ctime>
 #include <random>
+#include <cmath>
 
-#define VERSION 2.2
-#define LAST_WORKING_VERSION 2.1
+#define VERSION "2.3 - WIP"
+#define LAST_WORKING_VERSION 2.2
 
 #define MIN_DISTRIBUTION -10000
 #define MAX_DISTRIBUTION 10000
 
-#define INITIAL_ARRAY_SIZE 16
-#define GENERATED_INPUT_HEAD 16
+#define INITIAL_ARRAY_SIZE 20
+#define GENERATED_INPUT_HEAD INITIAL_ARRAY_SIZE
 #define THREADS_NUM INITIAL_ARRAY_SIZE
 
 __device__ unsigned int calcSelfGlobalIndex() {
     return threadIdx.x + blockIdx.x * blockDim.x;
 }
 
-__device__ void merge(int globalThreadId, int offset, int* sharedData, int* output){
-    int endIdx = globalThreadId + offset*2;
-    int middleIdx = globalThreadId + offset;
-
-    int firstHalfIdxCursor = globalThreadId;
+__device__ void merge(int startIdx, int middleIdx, int endIdx, int* sharedData, int* output){
+    int firstHalfIdxCursor = startIdx;
     int secondHalfIdxCursor = middleIdx;
 
-    for (unsigned int ptr = globalThreadId; ptr < endIdx; ptr++) {
+    for (unsigned int ptr = startIdx; ptr < endIdx; ptr++) {
         if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || sharedData[firstHalfIdxCursor] <= sharedData[secondHalfIdxCursor])) {
             output[ptr] = sharedData[firstHalfIdxCursor];
             firstHalfIdxCursor++;
@@ -36,8 +34,19 @@ __device__ void merge(int globalThreadId, int offset, int* sharedData, int* outp
     }
 }
 
+__device__ int calcEndIdx(int cycle){
+    return calcSelfGlobalIndex() + offset*2;
+}
 
-__global__ void mergeSortGPUBasic(int* input, int* output, int size) {
+__device__ int calcMidIdx(int cycle){
+    return calcSelfGlobalIndex() + offset*2;
+}
+
+__device__ int calcThreadTakesPartInCycle(int cycle, int recursionDepth, int size){
+    return threadIdx.x % cycle == 0;
+}
+
+__global__ void mergeSortGPUBasic(int* input, int* output, int size, int recursionDepth) {
     extern __shared__ int sharedData[];  // shared memory declaration
     unsigned int localThreadId = threadIdx.x;
     unsigned int globalThreadId = calcSelfGlobalIndex();
@@ -45,9 +54,9 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size) {
     sharedData[localThreadId] = input[globalThreadId];
     __syncthreads();
 
-    for (unsigned int offset = 1; offset < blockDim.x; offset *= 2) {
-        if (localThreadId % (2 * offset) == 0) {
-            merge(globalThreadId, offset, sharedData, output);
+    for (unsigned int cycle = 1; cycle <= recursionDepth; cycle++) {
+        if (threadTakesPartInCycle(cycle, recursionDepth, size)) {
+            merge(globalThreadId, calcMidIdx(cycle), calcEndIdx(cycle), sharedData, output);
         }
         __syncthreads();
         sharedData[localThreadId] = output[globalThreadId];
@@ -72,6 +81,18 @@ int* generateRandomInput(int size) {
     return randomNumbers;
 }
 
+int calcRecursionDepth(int size){
+    if (size <= 1) {
+        return 0;  // Already sorted
+    }
+
+    int mid = size / 2;
+    int leftDepth = calcRecursionDepth(mid);
+    int rightDepth = calcRecursionDepth(size - mid);
+
+    return std::max(left_depth, right_depth) + 1
+}
+
 void mergesort(int* input, int size){
     int *inputData, *outputData;
 
@@ -85,7 +106,7 @@ void mergesort(int* input, int size){
     dim3 blocksDim(1, 1, 1);
     dim3 threadBlockDim(THREADS_NUM, 1, 1);
 
-    mergeSortGPUBasic<<<blocksDim,threadBlockDim>>>(inputData, outputData, size);
+    mergeSortGPUBasic<<<blocksDim,threadBlockDim>>>(inputData, outputData, size, calcRecursionDepth());
     cudaDeviceSynchronize(); // wait on CPU side for operations ordered to GPU
 
     cudaMemcpy(input, outputData, size * sizeof(int), cudaMemcpyDeviceToHost);
