@@ -5,7 +5,7 @@
 #include <random>
 #include <cmath>
 
-#define VERSION "2.3"
+#define VERSION "2.4"
 #define LAST_WORKING_VERSION 2.2
 
 #define MIN_DISTRIBUTION -10000
@@ -35,16 +35,16 @@ __device__ void merge(int startIdx, int middleIdx, int endIdx, int* sharedData, 
 }
 
 __device__ int calcEndIdx(int cycle, int size){
-    int endIdx = threadIdx.x + pow(2, cycle) - 1;
+    int endIdx = threadIdx.x + powf(2, cycle) - 1;
     return endIdx > size? size : endIdx;
 }
 
 __device__ int calcMidIdx(int startIdx, int endIdx){
-    return startIdx + ceil((endIdx - startIdx)/2);
+    return startIdx + ceilf((endIdx - startIdx)/2);
 }
 
-__device__ bool threadTakesPartInCycle(int cycle, int recursionDepth, int size){
-    return threadIdx.x % pow(2, cycle) == 0;
+__device__ bool threadTakesPartInCycle(int cycle, int localThreadId){
+    return localThreadId % powf(2, cycle) == 0;
 }
 
 __global__ void mergeSortGPUBasic(int* input, int* output, int size, int recursionDepth) {
@@ -56,7 +56,7 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size, int recursi
     __syncthreads();
 
     for (unsigned int cycle = 1; cycle <= recursionDepth; cycle++) {
-        if (threadTakesPartInCycle(cycle, recursionDepth, size)) {
+        if (threadTakesPartInCycle(cycle, localThreadId)) {
             int endIdx = calcEndIdx(cycle, size);
             int middleIdx = calcMidIdx(localThreadId, endIdx);
             merge(localThreadId, middleIdx, endIdx, sharedData, output);
@@ -84,7 +84,7 @@ int* generateRandomInput(int size) {
     return randomNumbers;
 }
 
-int calcRecursionDepthAnd(int size){
+int calcRecursionDepth(int size){
     if (size <= 1) {
         return 0;  // Already sorted
     }
@@ -93,7 +93,7 @@ int calcRecursionDepthAnd(int size){
     int leftDepth = calcRecursionDepth(mid);
     int rightDepth = calcRecursionDepth(size - mid);
 
-    return std::max(left_depth, right_depth) + 1
+    return std::max(leftDepth, rightDepth) + 1;
 }
 
 void mergesort(int* input, int size){
