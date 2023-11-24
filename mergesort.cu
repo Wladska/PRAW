@@ -5,7 +5,7 @@
 #include <random>
 #include <cmath>
 
-#define VERSION "2.3 - WIP"
+#define VERSION "2.3"
 #define LAST_WORKING_VERSION 2.2
 
 #define MIN_DISTRIBUTION -10000
@@ -23,7 +23,7 @@ __device__ void merge(int startIdx, int middleIdx, int endIdx, int* sharedData, 
     int firstHalfIdxCursor = startIdx;
     int secondHalfIdxCursor = middleIdx;
 
-    for (unsigned int ptr = startIdx; ptr < endIdx; ptr++) {
+    for (unsigned int ptr = startIdx; ptr <= endIdx; ptr++) {
         if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || sharedData[firstHalfIdxCursor] <= sharedData[secondHalfIdxCursor])) {
             output[ptr] = sharedData[firstHalfIdxCursor];
             firstHalfIdxCursor++;
@@ -34,16 +34,17 @@ __device__ void merge(int startIdx, int middleIdx, int endIdx, int* sharedData, 
     }
 }
 
-__device__ int calcEndIdx(int cycle){
-    return calcSelfGlobalIndex() + offset*2;
+__device__ int calcEndIdx(int cycle, int size){
+    int endIdx = threadIdx.x + pow(2, cycle) - 1;
+    return endIdx > size? size : endIdx;
 }
 
-__device__ int calcMidIdx(int cycle){
-    return calcSelfGlobalIndex() + offset*2;
+__device__ int calcMidIdx(int startIdx, int endIdx){
+    return startIdx + ceil((endIdx - startIdx)/2);
 }
 
-__device__ int calcThreadTakesPartInCycle(int cycle, int recursionDepth, int size){
-    return threadIdx.x % cycle == 0;
+__device__ bool threadTakesPartInCycle(int cycle, int recursionDepth, int size){
+    return threadIdx.x % pow(2, cycle) == 0;
 }
 
 __global__ void mergeSortGPUBasic(int* input, int* output, int size, int recursionDepth) {
@@ -56,7 +57,9 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size, int recursi
 
     for (unsigned int cycle = 1; cycle <= recursionDepth; cycle++) {
         if (threadTakesPartInCycle(cycle, recursionDepth, size)) {
-            merge(globalThreadId, calcMidIdx(cycle), calcEndIdx(cycle), sharedData, output);
+            int endIdx = calcEndIdx(cycle, size);
+            int middleIdx = calcMidIdx(localThreadId, endIdx);
+            merge(localThreadId, middleIdx, endIdx, sharedData, output);
         }
         __syncthreads();
         sharedData[localThreadId] = output[globalThreadId];
@@ -81,7 +84,7 @@ int* generateRandomInput(int size) {
     return randomNumbers;
 }
 
-int calcRecursionDepth(int size){
+int calcRecursionDepthAnd(int size){
     if (size <= 1) {
         return 0;  // Already sorted
     }
