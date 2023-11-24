@@ -5,8 +5,8 @@
 #include <random>
 #include <cmath>
 
-#define VERSION "2.9"
-#define LAST_WORKING_VERSION 2.9
+#define VERSION "3.0"
+#define LAST_WORKING_VERSION 3.0
 
 #define MIN_DISTRIBUTION -10000
 #define MAX_DISTRIBUTION 10000
@@ -34,8 +34,8 @@ __device__ void merge(int startIdx, int middleIdx, int endIdx, int* sharedData, 
     }
 }
 
-__device__ int calcEndIdx(int cycle, int size){
-    int endIdx = threadIdx.x + powf(2, cycle) - 1;
+__device__ int calcEndIdx(int startIdx, int cycle, int size){
+    int endIdx = startIdx + powf(2, cycle) - 1;
     return endIdx >= size? size-1 : endIdx;
 }
 
@@ -44,9 +44,8 @@ __device__ int calcMidIdx(int startIdx, int cycle, int size){
     return midIdx >= size? size-1 : midIdx;
 }
 
-__device__ bool threadTakesPartInCycle(int cycle, int localThreadId){
-    int power = powf(2, cycle);
-    return localThreadId % power == 0;
+__device__ int threadTakesPartInCycle(int cycle, int localThreadId, int size){
+    return localThreadId * powf(2, cycle);
 }
 
 __global__ void mergeSortGPUBasic(int* input, int* output, int size, int recursionDepth) {
@@ -58,12 +57,12 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size, int recursi
     __syncthreads();
 
     for (unsigned int cycle = 1; cycle <= recursionDepth; cycle++) {
-        if (threadTakesPartInCycle(cycle, localThreadId)) {
-            int endIdx = calcEndIdx(cycle, size);
+        if (int startIdx = threadTakesPartInCycle(cycle, localThreadId, size); startIdx < size) {
+            int endIdx = calcEndIdx(startIdx, cycle, size);
             //output[globalThreadId] = endIdx;
-            int middleIdx = calcMidIdx(localThreadId, cycle, size);
+            int middleIdx = calcMidIdx(startIdx, cycle, size);
             //output[globalThreadId] = middleIdx;
-            merge(localThreadId, middleIdx, endIdx, sharedData, output);
+            merge(startIdx, middleIdx, endIdx, sharedData, output);
         }
         __syncthreads();
         sharedData[localThreadId] = output[globalThreadId];
