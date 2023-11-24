@@ -6,7 +6,7 @@
 #include <cmath>
 
 #define VERSION "2.9"
-#define LAST_WORKING_VERSION 2.2
+#define LAST_WORKING_VERSION 2.9
 
 #define MIN_DISTRIBUTION -10000
 #define MAX_DISTRIBUTION 10000
