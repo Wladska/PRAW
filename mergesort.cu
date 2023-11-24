@@ -5,7 +5,7 @@
 #include <random>
 #include <cmath>
 
-#define VERSION "2.6"
+#define VERSION "2.7"
 #define LAST_WORKING_VERSION 2.2
 
 #define MIN_DISTRIBUTION -10000
@@ -36,7 +36,7 @@ __device__ void merge(int startIdx, int middleIdx, int endIdx, int* sharedData, 
 
 __device__ int calcEndIdx(int cycle, int size){
     int endIdx = threadIdx.x + powf(2, cycle) - 1;
-    return endIdx > size? size : endIdx;
+    return endIdx >= size? size-1 : endIdx;
 }
 
 __device__ int calcMidIdx(int startIdx, int endIdx){
@@ -59,9 +59,9 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size, int recursi
     for (unsigned int cycle = 1; cycle <= recursionDepth; cycle++) {
         if (threadTakesPartInCycle(cycle, localThreadId)) {
             int endIdx = calcEndIdx(cycle, size);
-            output[globalThreadId] = endIdx;
+            //output[globalThreadId] = endIdx;
             int middleIdx = calcMidIdx(localThreadId, endIdx);
-            output[globalThreadId] = middleIdx;
+            //output[globalThreadId] = middleIdx;
             merge(localThreadId, middleIdx, endIdx, sharedData, output);
         }
         __syncthreads();
@@ -70,7 +70,7 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size, int recursi
     }
 
     // Copy the result back to the output array
-    //output[globalThreadId] = sharedData[localThreadId];
+    output[globalThreadId] = sharedData[localThreadId];
 }
 
 int* generateRandomInput(int size) {
