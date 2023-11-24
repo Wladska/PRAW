@@ -5,13 +5,13 @@
 #include <random>
 #include <cmath>
 
-#define VERSION "2.4"
+#define VERSION "2.5"
 #define LAST_WORKING_VERSION 2.2
 
 #define MIN_DISTRIBUTION -10000
 #define MAX_DISTRIBUTION 10000
 
-#define INITIAL_ARRAY_SIZE 20
+#define INITIAL_ARRAY_SIZE 10
 #define GENERATED_INPUT_HEAD INITIAL_ARRAY_SIZE
 #define THREADS_NUM INITIAL_ARRAY_SIZE
 
@@ -40,11 +40,12 @@ __device__ int calcEndIdx(int cycle, int size){
 }
 
 __device__ int calcMidIdx(int startIdx, int endIdx){
-    return startIdx + ceilf((endIdx - startIdx)/2);
+    return startIdx + ceilf((endIdx - startIdx)/2.0);
 }
 
 __device__ bool threadTakesPartInCycle(int cycle, int localThreadId){
-    return localThreadId % powf(2, cycle) == 0;
+    int power = powf(2, cycle);
+    return localThreadId % power == 0;
 }
 
 __global__ void mergeSortGPUBasic(int* input, int* output, int size, int recursionDepth) {
@@ -109,7 +110,9 @@ void mergesort(int* input, int size){
     dim3 blocksDim(1, 1, 1);
     dim3 threadBlockDim(THREADS_NUM, 1, 1);
 
-    mergeSortGPUBasic<<<blocksDim,threadBlockDim>>>(inputData, outputData, size, calcRecursionDepth());
+    int recDepth = calcRecursionDepth(size);
+
+    mergeSortGPUBasic<<<blocksDim,threadBlockDim>>>(inputData, outputData, size, recDepth);
     cudaDeviceSynchronize(); // wait on CPU side for operations ordered to GPU
 
     cudaMemcpy(input, outputData, size * sizeof(int), cudaMemcpyDeviceToHost);
@@ -134,7 +137,7 @@ int main() {
 
     mergesort(randomNumbers, initialArraySize);
    
-    // Print the input array
+    // Print the sorted array
     for (int i = 0; i < initialArraySize; i++) {
         std::cout << randomNumbers[i] << " ";
     }
