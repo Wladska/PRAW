@@ -5,7 +5,7 @@
 #include <random>
 #include <cmath>
 
-#define VERSION "2.8"
+#define VERSION "2.9"
 #define LAST_WORKING_VERSION 2.2
 
 #define MIN_DISTRIBUTION -10000
@@ -39,8 +39,9 @@ __device__ int calcEndIdx(int cycle, int size){
     return endIdx >= size? size-1 : endIdx;
 }
 
-__device__ int calcMidIdx(int startIdx, int endIdx){
-    return startIdx + ceilf((endIdx - startIdx)/2.0);
+__device__ int calcMidIdx(int startIdx, int cycle, int size){
+    int midIdx = startIdx + powf(2, cycle-1);
+    return midIdx >= size? size-1 : midIdx;
 }
 
 __device__ bool threadTakesPartInCycle(int cycle, int localThreadId){
@@ -60,7 +61,7 @@ __global__ void mergeSortGPUBasic(int* input, int* output, int size, int recursi
         if (threadTakesPartInCycle(cycle, localThreadId)) {
             int endIdx = calcEndIdx(cycle, size);
             //output[globalThreadId] = endIdx;
-            int middleIdx = calcMidIdx(localThreadId, endIdx);
+            int middleIdx = calcMidIdx(localThreadId, cycle, size);
             //output[globalThreadId] = middleIdx;
             merge(localThreadId, middleIdx, endIdx, sharedData, output);
         }
