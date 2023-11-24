@@ -5,7 +5,7 @@
 #include <random>
 #include <cmath>
 
-#define VERSION "2.7"
+#define VERSION "2.8"
 #define LAST_WORKING_VERSION 2.2
 
 #define MIN_DISTRIBUTION -10000
@@ -24,7 +24,7 @@ __device__ void merge(int startIdx, int middleIdx, int endIdx, int* sharedData, 
     int secondHalfIdxCursor = middleIdx;
 
     for (unsigned int ptr = startIdx; ptr <= endIdx; ptr++) {
-        if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor >= endIdx || sharedData[firstHalfIdxCursor] <= sharedData[secondHalfIdxCursor])) {
+        if (firstHalfIdxCursor < middleIdx && (secondHalfIdxCursor > endIdx || sharedData[firstHalfIdxCursor] <= sharedData[secondHalfIdxCursor])) {
             output[ptr] = sharedData[firstHalfIdxCursor];
             firstHalfIdxCursor++;
         } else {
