@@ -5,13 +5,13 @@
 #include <random>
 #include <cmath>
 
-#define VERSION "2.9"
+#define VERSION "2.9.1"
 #define LAST_WORKING_VERSION 2.9
 
 #define MIN_DISTRIBUTION -10000
 #define MAX_DISTRIBUTION 10000
 
-#define INITIAL_ARRAY_SIZE 10
+#define INITIAL_ARRAY_SIZE 256
 #define GENERATED_INPUT_HEAD INITIAL_ARRAY_SIZE
 #define THREADS_NUM INITIAL_ARRAY_SIZE
 
@@ -140,6 +140,7 @@ int main() {
 
     mergesort(randomNumbers, initialArraySize);
    
+    std::cout << std::endl;
     // Print the sorted array
     for (int i = 0; i < initialArraySize; i++) {
         std::cout << randomNumbers[i] << " ";
