@@ -20,7 +20,7 @@ std::vector<int> generateRandomInput(int size) {
     std::vector<int> randomNumbers{};
 
     for (int i = 0; i < size; ++i) {
-        randomNumbers[i] = distribution(generator);
+        randomNumbers.push_back(distribution(generator));
     }
 
     return randomNumbers;
@@ -78,7 +78,7 @@ int main() {
     int initialArraySize = INITIAL_ARRAY_SIZE;
     std::vector<int> randomNumbers = generateRandomInput(initialArraySize);
 
-    std::cout << "Original array: ";
+    std::cout << "Original array: \n";
     for (const auto& el : randomNumbers) {
         std::cout << el << " ";
     }
@@ -87,7 +87,7 @@ int main() {
     // Perform parallel merge sort
     mergeSort(randomNumbers, 0, initialArraySize - 1);
 
-    std::cout << "Sorted array: ";
+    std::cout << "Sorted array: \n";
     for (const auto& el : randomNumbers) {
         std::cout << el << " ";
     }
