@@ -6,11 +6,14 @@
 #include <cmath>
 #include <algorithm>
 #include <omp.h>
+#include <chrono>
 
 #define MIN_DISTRIBUTION -10000
 #define MAX_DISTRIBUTION 10000
 
-#define INITIAL_ARRAY_SIZE 500
+#define INITIAL_ARRAY_SIZE 10000
+#define RUNS 10
+#define DEBUG 0
 
 std::vector<int> generateRandomInput(int size) {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
@@ -76,22 +79,44 @@ void mergeSort(std::vector<int>& array, int begin, int end) {
 
 int main() {
     int initialArraySize = INITIAL_ARRAY_SIZE;
-    std::vector<int> randomNumbers = generateRandomInput(initialArraySize);
+    std::vector<double> runs;
+    double wholeDuration = 0;
 
-    std::cout << "Original array: \n";
-    for (const auto& el : randomNumbers) {
-        std::cout << el << " ";
+    for (int i = 0; i < RUNS; i++) {
+        std::vector<int> randomNumbers = generateRandomInput(initialArraySize);
+
+        if (DEBUG) {
+            std::cout << "Original array: \n";
+            for (const auto& el : randomNumbers) {
+                std::cout << el << " ";
+            }
+            std::cout << "\n";
+        }
+
+        auto start = std::chrono::high_resolution_clock::now();
+        // Perform parallel merge sort
+        mergeSort(randomNumbers, 0, initialArraySize - 1);
+        auto stop = std::chrono::high_resolution_clock::now();
+
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        double time = duration.count() / 1000000.0;
+
+        std::cout << "Duration: " << time << " seconds" << std::endl;
+        runs.push_back(time);
+        wholeDuration += time;
+
+        if (DEBUG) {
+            std::cout << "Sorted array: \n";
+            for (const auto& el : randomNumbers) {
+                std::cout << el << " ";
+            }
+            std::cout << "\n";
+        }
     }
-    std::cout << "\n";
 
-    // Perform parallel merge sort
-    mergeSort(randomNumbers, 0, initialArraySize - 1);
-
-    std::cout << "Sorted array: \n";
-    for (const auto& el : randomNumbers) {
-        std::cout << el << " ";
-    }
-    std::cout << "\n";
+    std::cout << "Mean : " << wholeDuration/(double) RUNS << std::endl;
+    std::sort(runs.begin(), runs.end());
+    std::cout << "Uncertainty: " << (runs[runs.size() - 1] - runs[0])/2 << std::endl;
 
     return 0;
 }
