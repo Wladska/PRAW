@@ -30,7 +30,9 @@ std::vector<int> generateRandomInput(int size) {
 }
 
 void merge(std::vector<int>& array, int const left, int const mid, int const right) {
-    std::vector<int> temp(right - left + 1);
+    std::vector<int> temp;
+    temp.reserve(right - left + 1);
+    
     int i = left, j = mid + 1, k = 0;
 
     while (i <= mid && j <= right) {
@@ -49,6 +51,7 @@ void merge(std::vector<int>& array, int const left, int const mid, int const rig
         temp[k++] = array[j++];
     }
 
+    #pragma omp parallel for
     for (i = left; i <= right; i++) {
         array[i] = temp[i - left];
     }
@@ -61,14 +64,14 @@ void mergeSort(std::vector<int>& array, int begin, int end) {
 
     int mid = begin + (end - begin) / 2;
 
-    #pragma omp parallel sections
+    #pragma omp parallel
     {
-        #pragma omp section
+        #pragma omp task
         {
             mergeSort(array, begin, mid);
         }
 
-        #pragma omp section
+        #pragma omp task
         {
             mergeSort(array, mid + 1, end);
         }
